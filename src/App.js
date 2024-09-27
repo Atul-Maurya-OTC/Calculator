@@ -24,50 +24,132 @@ const buttons = [
   "=",
 ];
 
-const operators = ["+", "-", "%", "÷", "x"];
+const operators = ["+", "-", "÷", "x"];
 
 function App() {
+  const [calcBuffer, setCalcBuffer] = useState([]);
   const [displayValue, setDisplayValue] = useState("0");
 
   const handleClick = (e) => {
     const value = e.target.innerText;
-    if (displayValue === "0" && operators.includes(value)) {
-      return;
-    }
-    const lastCharacter = displayValue.slice(
-      displayValue.length - 1,
-      displayValue.length
-    );
-    if (operators.includes(lastCharacter) && operators.includes(value)) {
-      setDisplayValue(displayValue.slice(0, displayValue.length - 1) + value);
-      return;
-    }
-
     if (value === "AC") {
-      setDisplayValue("0");
+      resetCalculator();
+    } else if (value === "=") {
+      calculateResult();
+    } else if (value === "%") {
+      divideHundred();
     } else if (value === "+/-") {
-      setDisplayValue((prev) =>
-        prev.startsWith("-") ? prev.slice(1) : "-" + prev
-      );
-    } else if (value === "=" || value === "%") {
-      try {
-        const fullExpression = displayValue
-          .replaceAll("x", "*")
-          .replaceAll("÷", "/");
-
-        const result =
-          value === "%" ? eval(fullExpression + "/100") : eval(fullExpression);
-        setDisplayValue(result.toString());
-      } catch (error) {
-        setDisplayValue("Error");
-      }
-    } else if (value === ["÷", "x", "-", "+"].includes(value)) {
-      if (displayValue !== "0" && displayValue !== "Error") {
-        setDisplayValue("0");
-      }
+      toggleSign();
+    } else if (value === ".") {
+      addDecimal();
+    } else if (isOperator(value)) {
+      addOperator(value);
     } else {
-      setDisplayValue((prev) => (prev === "0" ? value : prev + value));
+      addDigit(value);
     }
+  };
+
+  // TO reset calculator on click of AC
+  const resetCalculator = () => {
+    setCalcBuffer([]);
+    setDisplayValue("0");
+  };
+
+  // TO add number when number button is clicked
+  const addDigit = (digit) => {
+    if (displayValue === "0" || isOperator(calcBuffer[calcBuffer.length - 1])) {
+      setDisplayValue(digit);
+    } else {
+      setDisplayValue((prev) => prev + digit);
+    }
+    setCalcBuffer((prev) => [...prev, digit]);
+  };
+
+  // To add operatot when any symbol is clicked
+  const addOperator = (operator) => {
+    if (!isOperator(calcBuffer[calcBuffer.length - 1])) {
+      setCalcBuffer((prev) => [...prev, operator]);
+      setDisplayValue(operator);
+    } else {
+      const buffLen = calcBuffer.length;
+      setCalcBuffer((prev) => [...prev.slice(0, buffLen - 1), operator]);
+      setDisplayValue(operator);
+    }
+  };
+
+  // Ro do calculations when = button clicked
+  const calculateResult = () => {
+    try {
+      const expression = convertToStandardExpression(calcBuffer);
+      const result = eval(expression);
+      setDisplayValue(String(result));
+      setCalcBuffer([String(result)]);
+    } catch (error) {
+      setDisplayValue("Error");
+      setCalcBuffer([]);
+      console.log(error);
+    }
+  };
+
+  // to handle % button click
+  const divideHundred = () => {
+    try {
+      const expression = convertToStandardExpression([...calcBuffer, "/100"]);
+      const result = eval(expression);
+      setDisplayValue(String(result));
+      setCalcBuffer([String(result)]);
+    } catch (error) {
+      setDisplayValue("Error");
+      setCalcBuffer([]);
+    }
+  };
+
+  // TO handle +/- button click
+  const toggleSign = () => {
+    const displaylength = displayValue.length;
+    const bufflength = calcBuffer.length;
+    const lastInput = calcBuffer[bufflength - 1];
+    if (!isNaN(lastInput)) {
+      if (displayValue.slice(0, 1) !== "-") {
+        // When number is positive
+        setCalcBuffer((prev) => {
+          const oldValue = [...prev];
+          oldValue.splice(bufflength - displaylength, 0, "-");
+          const newBuffer = [...oldValue];
+          return newBuffer;
+        });
+        setDisplayValue("-" + displayValue);
+      } else {
+        // when number is negetive
+        setCalcBuffer((prev) => {
+          const oldValue = [...prev];
+          oldValue.splice(bufflength - displaylength, 1);
+          const newBuffer = [...oldValue];
+          return newBuffer;
+        });
+        setDisplayValue(displayValue.slice(1, displaylength));
+      }
+    }
+  };
+
+  // TO handle decimal button click
+  const addDecimal = () => {
+    const lastInput = calcBuffer[calcBuffer.length - 1];
+    if (!lastInput?.includes(".")) {
+      const newValue = lastInput ? lastInput + "." : "0.";
+      setCalcBuffer((prev) => [...prev.slice(0, -1), newValue]);
+      setDisplayValue(newValue);
+    }
+  };
+
+  // To check if clicked button is any operator or not
+  const isOperator = (value) => {
+    return operators.includes(value);
+  };
+
+  // to cunvert buffer to string with updated symbols
+  const convertToStandardExpression = (buffer) => {
+    return buffer.map((v) => (v === "x" ? "*" : v === "÷" ? "/" : v)).join("");
   };
 
   return (
